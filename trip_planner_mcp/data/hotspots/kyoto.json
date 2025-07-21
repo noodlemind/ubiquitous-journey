@@ -1,0 +1,40 @@
+{
+  "city": "Kyoto",
+  "hotspots": [
+    {
+      "name": "Fushimi Inari Shrine",
+      "type": "temple",
+      "description": "Famous for thousands of vermillion torii gates",
+      "rating": 4.8,
+      "opening_hours": "24/7"
+    },
+    {
+      "name": "Kinkaku-ji",
+      "type": "temple",
+      "description": "Golden Pavilion temple covered in gold leaf",
+      "rating": 4.7,
+      "opening_hours": "9:00-17:00"
+    },
+    {
+      "name": "Arashiyama Bamboo Grove",
+      "type": "nature",
+      "description": "Magical bamboo forest perfect for walks",
+      "rating": 4.5,
+      "opening_hours": "24/7"
+    },
+    {
+      "name": "Gion District",
+      "type": "cultural",
+      "description": "Historic geisha district with traditional architecture",
+      "rating": 4.6,
+      "opening_hours": "24/7"
+    },
+    {
+      "name": "Kiyomizu-dera",
+      "type": "temple",
+      "description": "Wooden temple with stunning city views",
+      "rating": 4.7,
+      "opening_hours": "6:00-18:00"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "city": "Kyoto",
+  "current": {
+    "temperature": 30,
+    "conditions": "Sunny",
+    "humidity": 45,
+    "wind": "Light breeze"
+  },
+  "forecast": [
+    {
+      "day": "Tomorrow",
+      "high": 30,
+      "low": 22,
+      "conditions": "Sunny"
+    },
+    {
+      "day": "Day 2",
+      "high": 28,
+      "low": 21,
+      "conditions": "Partly cloudy"
+    },
+    {
+      "day": "Day 3",
+      "high": 26,
+      "low": 20,
+      "conditions": "Light rain"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "city": "Tokyo",
+  "current": {
+    "temperature": 28,
+    "conditions": "Partly cloudy",
+    "humidity": 60,
+    "wind": "Moderate"
+  },
+  "forecast": [
+    {
+      "day": "Tomorrow",
+      "high": 29,
+      "low": 23,
+      "conditions": "Cloudy"
+    },
+    {
+      "day": "Day 2",
+      "high": 27,
+      "low": 22,
+      "conditions": "Rain"
+    },
+    {
+      "day": "Day 3",
+      "high": 25,
+      "low": 21,
+      "conditions": "Partly cloudy"
+    }
+  ]
+}

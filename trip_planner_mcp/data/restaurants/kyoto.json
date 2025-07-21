@@ -1,0 +1,47 @@
+{
+  "city": "Kyoto",
+  "restaurants": [
+    {
+      "name": "Ichiran Ramen",
+      "cuisine": "ramen",
+      "price_range": "$$",
+      "rating": 4.5,
+      "specialty": "Tonkotsu ramen with customizable flavor"
+    },
+    {
+      "name": "Kikunoi",
+      "cuisine": "kaiseki",
+      "price_range": "$$$$",
+      "rating": 4.9,
+      "specialty": "Traditional multi-course kaiseki dinner"
+    },
+    {
+      "name": "Nishiki Market",
+      "cuisine": "street_food",
+      "price_range": "$",
+      "rating": 4.4,
+      "specialty": "Various Japanese street foods and local delicacies"
+    },
+    {
+      "name": "Ganko Takoyaki",
+      "cuisine": "street_food",
+      "price_range": "$",
+      "rating": 4.3,
+      "specialty": "Osaka-style takoyaki (octopus balls)"
+    },
+    {
+      "name": "Kyoto Gogyo",
+      "cuisine": "ramen",
+      "price_range": "$$",
+      "rating": 4.6,
+      "specialty": "Burnt miso ramen with rich, smoky flavor"
+    },
+    {
+      "name": "Pontocho Alley Restaurants",
+      "cuisine": "various",
+      "price_range": "$$$",
+      "rating": 4.5,
+      "specialty": "Traditional dining along historic alley"
+    }
+  ]
+}
