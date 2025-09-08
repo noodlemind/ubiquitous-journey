@@ -1,0 +1,72 @@
+[
+  {
+    "product_name": "Laptop Pro X1",
+    "price": 1299,
+    "units_sold": 234,
+    "rating": 4.5,
+    "category": "Electronics"
+  },
+  {
+    "product_name": "Winter Jacket Premium",
+    "price": 189,
+    "units_sold": 567,
+    "rating": 4.2,
+    "category": "Clothing"
+  },
+  {
+    "product_name": "Smart Watch Ultra",
+    "price": 399,
+    "units_sold": 432,
+    "rating": 4.7,
+    "category": "Electronics"
+  },
+  {
+    "product_name": "Coffee Maker Deluxe",
+    "price": 149,
+    "units_sold": 321,
+    "rating": 4.1,
+    "category": "Home & Garden"
+  },
+  {
+    "product_name": "Gaming Headset Pro",
+    "price": 89,
+    "units_sold": 789,
+    "rating": 4.4,
+    "category": "Electronics"
+  },
+  {
+    "product_name": "Yoga Mat Premium",
+    "price": 45,
+    "units_sold": 892,
+    "rating": 4.6,
+    "category": "Sports"
+  },
+  {
+    "product_name": "Bluetooth Speaker Max",
+    "price": 79,
+    "units_sold": 654,
+    "rating": 4.3,
+    "category": "Electronics"
+  },
+  {
+    "product_name": "Running Shoes Elite",
+    "price": 129,
+    "units_sold": 445,
+    "rating": 4.5,
+    "category": "Sports"
+  },
+  {
+    "product_name": "Kitchen Knife Set",
+    "price": 199,
+    "units_sold": 223,
+    "rating": 4.8,
+    "category": "Home & Garden"
+  },
+  {
+    "product_name": "Wireless Mouse Pro",
+    "price": 59,
+    "units_sold": 1023,
+    "rating": 4.2,
+    "category": "Electronics"
+  }
+]
