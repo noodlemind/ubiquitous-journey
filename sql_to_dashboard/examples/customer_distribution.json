@@ -1,0 +1,32 @@
+[
+  {
+    "country": "United States",
+    "customer_count": 3452,
+    "revenue_share": 45.2
+  },
+  {
+    "country": "United Kingdom",
+    "customer_count": 1876,
+    "revenue_share": 18.7
+  },
+  {
+    "country": "Germany",
+    "customer_count": 1234,
+    "revenue_share": 12.3
+  },
+  {
+    "country": "France",
+    "customer_count": 987,
+    "revenue_share": 9.8
+  },
+  {
+    "country": "Canada",
+    "customer_count": 765,
+    "revenue_share": 7.6
+  },
+  {
+    "country": "Other",
+    "customer_count": 643,
+    "revenue_share": 6.4
+  }
+]

@@ -81,7 +81,15 @@ class DDLParser:
         if not create_stmt.this:
             return None
             
-        table_name = create_stmt.this.name
+        # The table name is in create_stmt.this.this for Schema objects
+        if hasattr(create_stmt.this, 'this') and create_stmt.this.this:
+            table_name = create_stmt.this.this.name
+        else:
+            table_name = create_stmt.this.name
+            
+        if not table_name:
+            return None
+            
         columns = []
         primary_keys = []
         foreign_keys = []
@@ -170,13 +178,18 @@ class DDLParser:
                 fk_info['columns'].append(expr.name)
         
         # Get referenced table and columns
-        if fk.reference:
-            if hasattr(fk.reference, 'this'):
-                fk_info['referenced_table'] = fk.reference.this.name
-            if hasattr(fk.reference, 'expressions'):
-                for expr in fk.reference.expressions:
-                    if isinstance(expr, exp.Column):
-                        fk_info['referenced_columns'].append(expr.name)
+        # In sqlglot, the reference is stored in the 'reference' property
+        if hasattr(fk, 'args') and 'reference' in fk.args:
+            ref = fk.args['reference']
+            if ref:
+                if isinstance(ref, exp.Table):
+                    fk_info['referenced_table'] = ref.name
+                elif hasattr(ref, 'this'):
+                    fk_info['referenced_table'] = ref.this.name
+                if hasattr(ref, 'expressions'):
+                    for expr in ref.expressions:
+                        if isinstance(expr, exp.Column):
+                            fk_info['referenced_columns'].append(expr.name)
         
         return fk_info if fk_info['referenced_table'] else None
     

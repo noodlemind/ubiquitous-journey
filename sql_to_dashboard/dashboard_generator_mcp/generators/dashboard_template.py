@@ -98,12 +98,19 @@ class DashboardTemplate:
         
         .charts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 40px;
+            margin-top: 30px;
         }
         
         .charts-grid.responsive {
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid.responsive {
+                grid-template-columns: 1fr;
+            }
         }
         
         .chart-container {
@@ -112,6 +119,13 @@ class DashboardTemplate:
             padding: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             min-height: 400px;
+            overflow: auto;
+            position: relative;
+        }
+        
+        .chart-container svg {
+            display: block;
+            margin: 0 auto;
         }
         
         .chart-title {
@@ -246,10 +260,12 @@ class DashboardTemplate:
             return DashboardTemplate._generate_line_chart_js(chart_id, config, data_json)
         elif config.type.value == "pie":
             return DashboardTemplate._generate_pie_chart_js(chart_id, config, data_json)
+        elif config.type.value == "scatter":
+            return DashboardTemplate._generate_scatter_chart_js(chart_id, config, data_json)
         elif config.type.value == "table":
             return DashboardTemplate._generate_table_js(chart_id, config, data_json)
         else:
-            return f"// Chart type '{config.type}' not yet implemented\\n"
+            return f"// Chart type '{config.type}' not yet implemented\n"
     
     @staticmethod
     def _generate_bar_chart_js(chart_id: str, config: ChartConfig, data_json: str) -> str:
@@ -287,8 +303,8 @@ class DashboardTemplate:
                 .attr("transform", `translate(${{margin.left}},${{margin.top}})`);
             
             // Determine X and Y columns
-            const xColumn = "{config.x_column or 'category' or 'x'}";
-            const yColumn = "{config.y_column or 'value' or 'count' or 'y'}";
+            const xColumn = "{config.x_column or 'category'}";
+            const yColumn = "{config.y_column or 'value'}";
             
             // Ensure data is in the right format
             const chartData = Array.isArray(data) ? data : [data];
@@ -374,8 +390,8 @@ class DashboardTemplate:
                 .attr("transform", `translate(${{margin.left}},${{margin.top}})`);
             
             const chartData = Array.isArray(data) ? data : [data];
-            const xColumn = "{config.x_column or 'date' or 'x'}";
-            const yColumn = "{config.y_column or 'value' or 'y'}";
+            const xColumn = "{config.x_column or 'date'}";
+            const yColumn = "{config.y_column or 'value'}";
             
             // Parse dates if x column contains date strings
             chartData.forEach(d => {{
@@ -456,8 +472,8 @@ class DashboardTemplate:
                 .attr("transform", `translate(${{width/2}},${{height/2}})`);
             
             const chartData = Array.isArray(data) ? data : [data];
-            const labelColumn = "{config.x_column or 'label' or 'category'}";
-            const valueColumn = "{config.y_column or 'value' or 'count'}";
+            const labelColumn = "{config.x_column or 'label'}";
+            const valueColumn = "{config.y_column or 'value'}";
             
             const color = d3.scaleOrdinal()
                 .domain(chartData.map(d => d[labelColumn]))
@@ -483,6 +499,137 @@ class DashboardTemplate:
                 .attr("transform", d => `translate(${{arc.centroid(d)}})`)
                 .attr("text-anchor", "middle")
                 .text(d => d.data[labelColumn]);
+        }})();
+        """
+    
+    @staticmethod
+    def _generate_scatter_chart_js(chart_id: str, config: ChartConfig, data_json: str) -> str:
+        """Generate D3.js scatter plot code."""
+        return f"""
+        // Scatter plot for {chart_id}
+        (function() {{
+            const data = {data_json};
+            const containerId = "{chart_id}";
+            const title = "{sanitize_html(config.title)}";
+            
+            const container = d3.select("#" + containerId);
+            const width = {config.width or 600};
+            const height = {config.height or 400};
+            const margin = {{top: 40, right: 30, bottom: 60, left: 60}};
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+            
+            container.html("");
+            container.append("h3").attr("class", "chart-title").text(title);
+            
+            const svg = container.append("svg")
+                .attr("width", width)
+                .attr("height", height);
+            
+            const g = svg.append("g")
+                .attr("transform", `translate(${{margin.left}},${{margin.top}})`);
+            
+            const chartData = Array.isArray(data) ? data : [data];
+            const xColumn = "{config.x_column or 'x'}";
+            const yColumn = "{config.y_column or 'y'}";
+            const groupColumn = "{config.group_by or ''}";
+            
+            // Create scales
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(chartData, d => +d[xColumn]))
+                .nice()
+                .range([0, innerWidth]);
+            
+            const yScale = d3.scaleLinear()
+                .domain(d3.extent(chartData, d => +d[yColumn]))
+                .nice()
+                .range([innerHeight, 0]);
+            
+            // Color scale for groups
+            const colorScale = groupColumn ? 
+                d3.scaleOrdinal()
+                    .domain([...new Set(chartData.map(d => d[groupColumn]))])
+                    .range(["var(--color-1)", "var(--color-2)", "var(--color-3)", "var(--color-4)", "var(--color-5)"])
+                : () => "var(--color-1)";
+            
+            // Add axes
+            g.append("g")
+                .attr("class", "axis x-axis")
+                .attr("transform", `translate(0,${{innerHeight}})`)
+                .call(d3.axisBottom(xScale));
+            
+            g.append("g")
+                .attr("class", "axis y-axis")
+                .call(d3.axisLeft(yScale));
+            
+            // Add axis labels
+            g.append("text")
+                .attr("class", "axis-label")
+                .attr("text-anchor", "middle")
+                .attr("x", innerWidth / 2)
+                .attr("y", innerHeight + 50)
+                .text(xColumn);
+            
+            g.append("text")
+                .attr("class", "axis-label")
+                .attr("text-anchor", "middle")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -45)
+                .attr("x", -innerHeight / 2)
+                .text(yColumn);
+            
+            // Add dots
+            const dots = g.selectAll(".dot")
+                .data(chartData)
+                .enter().append("circle")
+                .attr("class", "dot")
+                .attr("cx", d => xScale(+d[xColumn]))
+                .attr("cy", d => yScale(+d[yColumn]))
+                .attr("r", 5)
+                .attr("fill", d => groupColumn ? colorScale(d[groupColumn]) : "var(--color-1)")
+                .attr("opacity", 0.7);
+            
+            // Add tooltip
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+            
+            dots.on("mouseover", function(event, d) {{
+                tooltip.transition().duration(200).style("opacity", .9);
+                let tooltipText = `${{xColumn}}: ${{d[xColumn]}}<br/>${{yColumn}}: ${{d[yColumn]}}`;
+                if (groupColumn && d[groupColumn]) {{
+                    tooltipText += `<br/>${{groupColumn}}: ${{d[groupColumn]}}`;
+                }}
+                tooltip.html(tooltipText)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            }})
+            .on("mouseout", function(d) {{
+                tooltip.transition().duration(500).style("opacity", 0);
+            }});
+            
+            // Add legend if grouped
+            if (groupColumn) {{
+                const legendData = [...new Set(chartData.map(d => d[groupColumn]))];
+                const legend = svg.append("g")
+                    .attr("class", "legend")
+                    .attr("transform", `translate(${{width - 120}}, 20)`);
+                
+                legendData.forEach((category, i) => {{
+                    const legendRow = legend.append("g")
+                        .attr("transform", `translate(0, ${{i * 20}})`);
+                    
+                    legendRow.append("circle")
+                        .attr("r", 5)
+                        .attr("fill", colorScale(category));
+                    
+                    legendRow.append("text")
+                        .attr("x", 10)
+                        .attr("y", 5)
+                        .attr("font-size", "12px")
+                        .text(category);
+                }});
+            }}
         }})();
         """
     
