@@ -1,0 +1,47 @@
+# Core dependencies
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+typing-extensions>=4.8.0
+
+# DDL parsing
+sqlglot>=18.0.0  # SQL parsing and generation
+lark>=1.1.0  # For Mermaid ER parsing
+
+# Database connectors
+sqlite3  # Built-in
+psycopg2-binary>=2.9.0  # PostgreSQL
+mysql-connector-python>=8.0.0  # MySQL
+sqlalchemy>=2.0.0  # Database abstraction
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+pyarrow>=12.0.0  # For efficient data serialization
+
+# Web/API
+fastapi>=0.104.0  # For MCP servers
+uvicorn>=0.24.0  # ASGI server
+httpx>=0.25.0  # HTTP client
+
+# Visualization
+jinja2>=3.1.0  # HTML templating
+
+# Development & Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.0
+black>=23.0.0  # Code formatting
+mypy>=1.5.0  # Type checking
+ruff>=0.1.0  # Linting
+
+# Utilities
+click>=8.1.0  # CLI framework
+rich>=13.5.0  # Rich terminal output
+pyyaml>=6.0.0  # YAML config support
+
+# Security
+cryptography>=41.0.0  # For secure connections
+
+# Optional: LLM support (for agent intelligence)
+# ollama>=0.1.0  # If using local LLM for query suggestions
