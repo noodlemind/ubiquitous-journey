@@ -1,0 +1,62 @@
+[
+  {
+    "date": "2024-01-01",
+    "daily_revenue": 12500,
+    "daily_orders": 45,
+    "average_order_value": 277.78
+  },
+  {
+    "date": "2024-01-02",
+    "daily_revenue": 15300,
+    "daily_orders": 52,
+    "average_order_value": 294.23
+  },
+  {
+    "date": "2024-01-03",
+    "daily_revenue": 11200,
+    "daily_orders": 38,
+    "average_order_value": 294.74
+  },
+  {
+    "date": "2024-01-04",
+    "daily_revenue": 18700,
+    "daily_orders": 61,
+    "average_order_value": 306.56
+  },
+  {
+    "date": "2024-01-05",
+    "daily_revenue": 22300,
+    "daily_orders": 73,
+    "average_order_value": 305.48
+  },
+  {
+    "date": "2024-01-06",
+    "daily_revenue": 19800,
+    "daily_orders": 67,
+    "average_order_value": 295.52
+  },
+  {
+    "date": "2024-01-07",
+    "daily_revenue": 16400,
+    "daily_orders": 55,
+    "average_order_value": 298.18
+  },
+  {
+    "date": "2024-01-08",
+    "daily_revenue": 14200,
+    "daily_orders": 48,
+    "average_order_value": 295.83
+  },
+  {
+    "date": "2024-01-09",
+    "daily_revenue": 17600,
+    "daily_orders": 58,
+    "average_order_value": 303.45
+  },
+  {
+    "date": "2024-01-10",
+    "daily_revenue": 20100,
+    "daily_orders": 66,
+    "average_order_value": 304.55
+  }
+]

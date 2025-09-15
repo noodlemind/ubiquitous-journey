@@ -1,0 +1,74 @@
+[
+  {
+    "category": "Electronics",
+    "total_sales": 125000,
+    "order_count": 342,
+    "month": "2024-01"
+  },
+  {
+    "category": "Clothing",
+    "total_sales": 87500,
+    "order_count": 512,
+    "month": "2024-01"
+  },
+  {
+    "category": "Books",
+    "total_sales": 43200,
+    "order_count": 289,
+    "month": "2024-01"
+  },
+  {
+    "category": "Home & Garden",
+    "total_sales": 98700,
+    "order_count": 178,
+    "month": "2024-01"
+  },
+  {
+    "category": "Electronics",
+    "total_sales": 132000,
+    "order_count": 367,
+    "month": "2024-02"
+  },
+  {
+    "category": "Clothing",
+    "total_sales": 92000,
+    "order_count": 548,
+    "month": "2024-02"
+  },
+  {
+    "category": "Books",
+    "total_sales": 41500,
+    "order_count": 276,
+    "month": "2024-02"
+  },
+  {
+    "category": "Home & Garden",
+    "total_sales": 103400,
+    "order_count": 192,
+    "month": "2024-02"
+  },
+  {
+    "category": "Electronics",
+    "total_sales": 138500,
+    "order_count": 389,
+    "month": "2024-03"
+  },
+  {
+    "category": "Clothing",
+    "total_sales": 95600,
+    "order_count": 573,
+    "month": "2024-03"
+  },
+  {
+    "category": "Books",
+    "total_sales": 44800,
+    "order_count": 295,
+    "month": "2024-03"
+  },
+  {
+    "category": "Home & Garden",
+    "total_sales": 107200,
+    "order_count": 201,
+    "month": "2024-03"
+  }
+]
