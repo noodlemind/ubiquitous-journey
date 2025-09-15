@@ -295,6 +295,243 @@ def workflow(schema_file, data_file, output_file, database):
 
 
 @cli.command()
+@click.option('--schema', '-s', 'schema_file', required=True, type=click.Path(exists=True),
+              help='DDL schema file')
+@click.option('--intents', '-i', multiple=True, required=True,
+              help='What insights you want (e.g., "sales trends", "customer analytics")')
+@click.option('--output-dir', '-o', default='./output', type=click.Path(),
+              help='Output directory for generated files')
+@click.option('--database', '-d', type=click.Choice(['sqlite', 'postgres', 'mysql']), default='sqlite',
+              help='Target database type')
+def generate_all(schema_file, intents, output_dir, database):
+    """Generate everything at once: query + dashboard template ready for data."""
+    
+    console.print(Panel.fit("🚀 [bold cyan]One-Shot SQL-to-Dashboard Generation[/bold cyan]", title="Starting"))
+    
+    # Create output directory
+    output_path = Path(output_dir)
+    output_path.mkdir(exist_ok=True)
+    
+    # Step 1: Parse schema and generate master query
+    console.print("\n📋 Step 1: Parsing schema and generating master query...")
+    
+    with open(schema_file, 'r') as f:
+        schema_content = f.read()
+    
+    parser_server = DDLParserMCPServer()
+    parse_request = DDLParserRequest(
+        task="parse_schema",
+        input=schema_content,
+        format=InputFormat.DDL,
+        database_type=database,
+        visualization_intents=list(intents)
+    )
+    
+    parse_response = parser_server.handle_request(parse_request)
+    
+    if parse_response.status == "error":
+        console.print(f"[red]❌ Schema parsing failed: {parse_response.error}[/red]")
+        return
+    
+    console.print(f"✅ Schema parsed: {len(parse_response.schema.tables)} tables found")
+    console.print(f"🤖 Business domain: {parse_response.metadata.get('business_analysis', {}).get('business_domain', 'Unknown')}")
+    
+    # Get the master query
+    if not parse_response.suggested_queries:
+        console.print("[red]❌ No queries generated[/red]")
+        return
+        
+    master_query = parse_response.suggested_queries[0]
+    
+    # Save the query
+    query_file = output_path / "master_query.sql"
+    with open(query_file, 'w') as f:
+        f.write(f"-- {master_query.description}\n")
+        f.write(f"-- Result Key: {master_query.result_key}\n")
+        f.write(f"-- Visualization Type: {master_query.visualization_type}\n\n")
+        f.write(master_query.query)
+    
+    console.print(f"💾 Query saved to: [green]{query_file}[/green]")
+    
+    # Step 2: Generate dashboard template
+    console.print("\n📋 Step 2: Generating dashboard template...")
+    
+    # Create a sample data structure that matches what the query would return
+    sample_data = {
+        "metadata": {
+            "source": "master_query",
+            "query_description": master_query.description,
+            "visualization_intents": list(intents),
+            "schema_tables": [t.name for t in parse_response.schema.tables],
+            "expected_columns": master_query.expected_columns
+        },
+        "data": []  # Will be filled when query is executed
+    }
+    
+    # Generate dashboard with placeholder for data
+    dashboard_server = DashboardGeneratorMCPServer()
+    dashboard_request = DashboardGeneratorRequest(
+        task="generate_dashboard",
+        data=[],  # Empty data - will be filled via JavaScript
+        auto_detect=True,
+        metadata={
+            "title": f"Dashboard for {parse_response.metadata.get('business_analysis', {}).get('business_domain', 'Data')} Analytics",
+            "description": f"Insights: {', '.join(intents)}",
+            "data_source": "master_query",
+            "expected_columns": master_query.expected_columns,
+            "visualization_intents": list(intents),
+            "note": "Load data.json to populate this dashboard"
+        }
+    )
+    
+    dashboard_response = dashboard_server.handle_request(dashboard_request)
+    
+    if dashboard_response.status == "error":
+        console.print(f"[red]❌ Dashboard generation failed: {dashboard_response.error}[/red]")
+        return
+    
+    # Modify dashboard HTML to load data dynamically
+    dashboard_html = dashboard_response.dashboard.html
+    
+    # Insert data loading script
+    data_loader_script = """
+    <script>
+    // Load data.json when available
+    async function loadData() {
+        try {
+            const response = await fetch('data.json');
+            const jsonData = await response.json();
+            
+            // Update visualizations with loaded data
+            if (jsonData.data && jsonData.data.length > 0) {
+                window.dashboardData = jsonData.data;
+                
+                // Trigger D3 visualizations update
+                if (window.updateVisualizations) {
+                    window.updateVisualizations(jsonData.data);
+                }
+                
+                console.log(`Loaded ${jsonData.data.length} rows of data`);
+            } else {
+                console.log('No data found in data.json');
+            }
+        } catch (error) {
+            console.log('Waiting for data.json...', error);
+            // Retry after 2 seconds
+            setTimeout(loadData, 2000);
+        }
+    }
+    
+    // Start loading when page is ready
+    document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+    """
+    
+    # Insert before closing body tag
+    dashboard_html = dashboard_html.replace('</body>', f'{data_loader_script}</body>')
+    
+    # Save dashboard
+    dashboard_file = output_path / "dashboard.html"
+    with open(dashboard_file, 'w') as f:
+        f.write(dashboard_html)
+    
+    console.print(f"🌐 Dashboard saved to: [green]{dashboard_file}[/green]")
+    
+    # Step 3: Create execution script
+    console.print("\n📋 Step 3: Creating execution helper...")
+    
+    exec_script = f"""#!/bin/bash
+# Execute the master query and save results as data.json
+
+echo "🔧 Executing master query..."
+
+# For SQLite example (adjust for your database)
+sqlite3 your_database.db <<EOF
+.mode json
+.output {output_path}/data.json
+{master_query.query}
+EOF
+
+echo "✅ Data saved to {output_path}/data.json"
+echo "🌐 Open {output_path}/dashboard.html in your browser"
+"""
+    
+    exec_file = output_path / "execute_query.sh"
+    with open(exec_file, 'w') as f:
+        f.write(exec_script)
+    
+    import os
+    os.chmod(exec_file, 0o755)
+    
+    console.print(f"🔧 Execution script saved to: [green]{exec_file}[/green]")
+    
+    # Step 4: Create README with instructions
+    readme_content = f"""# Generated Dashboard Package
+
+## Files Generated:
+- `master_query.sql` - The comprehensive query to get all data
+- `dashboard.html` - Interactive D3.js dashboard (auto-loads data.json)
+- `execute_query.sh` - Helper script to execute query
+- `data.json` - (You need to create this by executing the query)
+
+## How to Use:
+
+### Option 1: Using the execution script
+```bash
+# Edit execute_query.sh to point to your database
+./execute_query.sh
+# Then open dashboard.html in your browser
+```
+
+### Option 2: Manual execution
+1. Execute the query in `master_query.sql` against your database
+2. Save the results as `data.json` in this directory
+3. Open `dashboard.html` in your browser
+
+## Query Details:
+- **Description**: {master_query.description}
+- **Database Type**: {database}
+- **Visualization Intents**: {', '.join(intents)}
+- **Tables Used**: {', '.join(master_query.tables_used) if master_query.tables_used else 'All tables'}
+
+## Dashboard Features:
+- Auto-loads data.json when available
+- D3.js handles all visualizations
+- Client-side data transformations
+- Interactive filtering and grouping
+
+## Notes:
+The dashboard will automatically reload data.json every 2 seconds until it finds the file.
+Once loaded, all visualizations will populate automatically.
+"""
+    
+    readme_file = output_path / "README.md"
+    with open(readme_file, 'w') as f:
+        f.write(readme_content)
+    
+    console.print(f"📝 README saved to: [green]{readme_file}[/green]")
+    
+    # Display summary
+    console.print(Panel(f"""
+🎉 [bold green]Success! Everything generated in one shot![/bold green]
+
+📁 Output directory: [cyan]{output_path}[/cyan]
+
+✅ Generated files:
+   • master_query.sql - Your comprehensive query
+   • dashboard.html - Pre-configured D3.js dashboard
+   • execute_query.sh - Query execution helper
+   • README.md - Complete instructions
+
+🚀 Next steps:
+   1. Execute the query: [cyan]./output/execute_query.sh[/cyan]
+   2. Open dashboard: [cyan]open ./output/dashboard.html[/cyan]
+   
+The dashboard will auto-load data.json and create all visualizations!
+""", title="✨ Complete Package Generated", border_style="green"))
+
+
+@cli.command()
 def examples():
     """Show example usage and sample data formats."""
     

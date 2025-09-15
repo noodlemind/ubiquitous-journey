@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Generated Dashboard</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        
+            :root {
+                --bg-primary: #ffffff;
+                --bg-secondary: #f5f5f5;
+                --text-primary: #333333;
+                --text-secondary: #666666;
+                --chart-bg: #ffffff;
+                --border-color: #e0e0e0;
+                --table-header-bg: #f5f5f5;
+                --table-hover-bg: #fafafa;
+                --color-1: #2196f3;
+                --color-2: #4caf50;
+                --color-3: #ff9800;
+                --color-4: #e91e63;
+                --color-5: #9c27b0;
+            }
+            
+            body {
+                background: var(--bg-secondary);
+                color: var(--text-primary);
+            }
+            
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .dashboard-title {
+            margin-bottom: 30px;
+            font-size: 2em;
+            font-weight: 600;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 40px;
+            margin-top: 30px;
+        }
+        
+        .charts-grid.responsive {
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid.responsive {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .chart-container {
+            background: var(--chart-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 400px;
+            overflow: auto;
+            position: relative;
+        }
+        
+        .chart-container svg {
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .chart-title {
+            font-size: 1.2em;
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+        
+        .axis {
+            font-size: 12px;
+        }
+        
+        .axis-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .bar {
+            transition: opacity 0.3s;
+        }
+        
+        .bar:hover {
+            opacity: 0.8;
+        }
+        
+        .line {
+            fill: none;
+            stroke-width: 2;
+        }
+        
+        .dot {
+            transition: r 0.3s;
+        }
+        
+        .dot:hover {
+            r: 6;
+        }
+        
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--table-header-bg);
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: var(--table-hover-bg);
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1 class="dashboard-title">Auto-Generated Dashboard</h1>
+        <div class="charts-grid responsive">
+            <div id="chart-0" class="chart-container"></div>
+
+        </div>
+    </div>
+    
+    <script>
+        // Chart rendering code
+        
+        // Table for chart-0
+        (function() {
+            const data = [];
+            const containerId = "chart-0";
+            const title = "Data Table";
+            
+            const container = d3.select("#" + containerId);
+            container.html("");
+            container.append("h3").attr("class", "chart-title").text(title);
+            
+            const chartData = Array.isArray(data) ? data : [data];
+            
+            if (chartData.length > 0) {
+                const columns = Object.keys(chartData[0]);
+                
+                const table = container.append("table");
+                const thead = table.append("thead");
+                const tbody = table.append("tbody");
+                
+                // Add headers
+                thead.append("tr")
+                    .selectAll("th")
+                    .data(columns)
+                    .enter()
+                    .append("th")
+                    .text(d => d);
+                
+                // Add rows
+                const rows = tbody.selectAll("tr")
+                    .data(chartData)
+                    .enter()
+                    .append("tr");
+                
+                rows.selectAll("td")
+                    .data(row => columns.map(col => row[col]))
+                    .enter()
+                    .append("td")
+                    .text(d => d);
+            }
+        })();
+        
+        
+        // Initialize all charts
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard initialized with 1 charts');
+        });
+    </script>
+
+    <script>
+    // Load data.json when available
+    async function loadData() {
+        try {
+            const response = await fetch('data.json');
+            const jsonData = await response.json();
+            
+            // Update visualizations with loaded data
+            if (jsonData.data && jsonData.data.length > 0) {
+                window.dashboardData = jsonData.data;
+                
+                // Trigger D3 visualizations update
+                if (window.updateVisualizations) {
+                    window.updateVisualizations(jsonData.data);
+                }
+                
+                console.log(`Loaded ${jsonData.data.length} rows of data`);
+            } else {
+                console.log('No data found in data.json');
+            }
+        } catch (error) {
+            console.log('Waiting for data.json...', error);
+            // Retry after 2 seconds
+            setTimeout(loadData, 2000);
+        }
+    }
+    
+    // Start loading when page is ready
+    document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+    </body>
+</html>
