@@ -1,9 +1,10 @@
-"""DDL Parser MCP Server - Parses schemas and generates SQL queries."""
+"""Simplified LLM-powered DDL Parser MCP Server."""
 
 import json
-from typing import Optional
+from typing import Dict, Any, List, Optional
 import sys
 from pathlib import Path
+import requests
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -12,30 +13,57 @@ from ddl_parser_mcp.schema import (
     DDLParserRequest, 
     DDLParserResponse, 
     InputFormat,
-    QuerySuggestion
+    QuerySuggestion,
+    DatabaseSchema
 )
 from ddl_parser_mcp.parser.ddl_parser import DDLParser
-from ddl_parser_mcp.generator.sql_generator import SQLGenerator
 from shared.validators import validate_input_size, validate_ddl_safety
-from shared.errors import MCPError, ParsingError, ValidationError
+from shared.errors import ParsingError, ValidationError
+from llm.sql_intelligence import SQLIntelligenceAgent
 
 
 class DDLParserMCPServer:
-    """MCP Server for DDL parsing and SQL generation."""
+    """Simplified MCP Server for DDL parsing with mandatory LLM intelligence."""
     
-    def __init__(self):
-        """Initialize the DDL Parser MCP Server."""
-        self.max_input_size = 100000  # 100KB limit
+    def __init__(self, llm_model: str = "llama3"):
+        """
+        Initialize the DDL Parser MCP Server with LLM.
         
+        Args:
+            llm_model: Which Ollama model to use (default: llama3)
+        """
+        self.max_input_size = 100000  # 100KB limit
+        self.llm_model = llm_model
+        
+        # Check if Ollama is running and initialize LLM agent
+        if not self._check_ollama():
+            raise RuntimeError(
+                "Ollama is not running. Please start it with:\n"
+                "  ollama serve\n"
+                "  ollama pull llama3"
+            )
+        
+        # Initialize LLM agent (required)
+        self.llm_agent = SQLIntelligenceAgent(llm_model=llm_model)
+        print(f"✨ LLM agent initialized with model: {llm_model}")
+    
+    def _check_ollama(self) -> bool:
+        """Check if Ollama is running and accessible."""
+        try:
+            response = requests.get("http://localhost:11434/api/tags", timeout=2)
+            return response.status_code == 200
+        except:
+            return False
+    
     def handle_request(self, request: DDLParserRequest) -> DDLParserResponse:
         """
-        Handle DDL parser request.
+        Handle DDL parser request with LLM intelligence.
         
         Args:
             request: DDLParserRequest object
             
         Returns:
-            DDLParserResponse object
+            DDLParserResponse object with LLM-generated queries
         """
         try:
             # Validate input size
@@ -71,11 +99,11 @@ class DDLParserMCPServer:
             )
     
     def _handle_ddl_input(self, request: DDLParserRequest) -> DDLParserResponse:
-        """Handle DDL input parsing and SQL generation."""
+        """Handle DDL input parsing with LLM intelligence."""
         # Validate DDL safety
         validate_ddl_safety(request.input)
         
-        # Parse DDL
+        # Parse DDL using sqlglot
         parser = DDLParser(dialect=request.database_type or "sqlite")
         schema = parser.parse(request.input)
         
@@ -85,15 +113,50 @@ class DDLParserMCPServer:
                 error="No tables found in DDL"
             )
         
-        # Generate SQL suggestions
-        generator = SQLGenerator(schema)
-        suggestions = generator.generate_suggestions(request.visualization_intents)
+        print("🤖 Analyzing schema with LLM...")
         
-        # Extract just the SQL statements for easy copying
+        # Convert schema to dict format for LLM
+        schema_dict = self._schema_to_dict(schema)
+        
+        # Get business analysis from LLM
+        analysis = self.llm_agent.analyze_business_context(schema_dict)
+        
+        # Get LLM-powered query suggestions
+        query_plans = self.llm_agent.suggest_queries_for_schema(
+            schema_dict,
+            visualization_intents=request.visualization_intents
+        )
+        
+        # Convert QueryPlans to QuerySuggestions
+        suggestions = []
+        for plan in query_plans:
+            suggestions.append(QuerySuggestion(
+                query=plan.query,
+                description=plan.description,
+                visualization_type=plan.visualization_type,
+                expected_columns=plan.expected_columns,
+                tables_used=plan.tables_used,
+                metadata={
+                    "confidence": plan.confidence,
+                    "explanation": plan.explanation,
+                    "intent": plan.intent.value
+                }
+            ))
+        
+        # Extract SQL statements for convenience
         sql_statements = [suggestion.query for suggestion in suggestions]
         
-        # Create instructions for the user
-        instructions = self._create_user_instructions(schema, suggestions)
+        # Create metadata with business analysis
+        metadata = {
+            "table_count": len(schema.tables),
+            "relationship_count": len(schema.relationships),
+            "query_count": len(suggestions),
+            "business_analysis": analysis,
+            "llm_model": self.llm_model
+        }
+        
+        # Create user instructions
+        instructions = self._create_user_instructions(schema, suggestions, analysis)
         
         return DDLParserResponse(
             status="success",
@@ -101,66 +164,95 @@ class DDLParserMCPServer:
             suggested_queries=suggestions,
             sql_statements=sql_statements,
             instructions=instructions,
-            metadata={
-                "table_count": len(schema.tables),
-                "relationship_count": len(schema.relationships),
-                "query_count": len(suggestions)
-            }
+            metadata=metadata
         )
     
     def _handle_mermaid_input(self, request: DDLParserRequest) -> DDLParserResponse:
-        """Handle Mermaid ER diagram input."""
-        # For now, return a placeholder - full Mermaid parsing to be implemented
-        return DDLParserResponse(
-            status="success",
-            instructions="""
-Mermaid ER diagram parsing is coming soon!
+        """Handle Mermaid ER diagram input (future implementation)."""
+        # For now, convert Mermaid to DDL using LLM
+        prompt = f"""Convert this Mermaid ER diagram to SQL DDL statements:
 
-For now, please convert your Mermaid diagram to DDL statements manually.
-Example Mermaid:
-```
-erDiagram
-    CUSTOMER ||--o{ ORDER : places
-    ORDER ||--|{ ORDER_ITEM : contains
-```
+{request.input}
 
-Equivalent DDL:
-```sql
-CREATE TABLE customer (
-    id INTEGER PRIMARY KEY,
-    name VARCHAR(100)
-);
-
-CREATE TABLE order (
-    id INTEGER PRIMARY KEY,
-    customer_id INTEGER,
-    FOREIGN KEY (customer_id) REFERENCES customer(id)
-);
-
-CREATE TABLE order_item (
-    id INTEGER PRIMARY KEY,
-    order_id INTEGER,
-    FOREIGN KEY (order_id) REFERENCES order(id)
-);
-```
-""",
-            metadata={"note": "Mermaid parser implementation pending"}
+Return only the CREATE TABLE statements in standard SQL format."""
+        
+        try:
+            # Use LLM to convert Mermaid to DDL
+            from llm.ollama_connector import OllamaConnector
+            connector = OllamaConnector(model=self.llm_model)
+            ddl_result = connector.generate(prompt, temperature=0.2)
+            
+            if ddl_result.startswith("Error:"):
+                return DDLParserResponse(
+                    status="error",
+                    error="Could not convert Mermaid diagram to DDL",
+                    metadata={"llm_response": ddl_result}
+                )
+            
+            # Now process the generated DDL
+            request.input = ddl_result
+            request.format = InputFormat.DDL
+            return self._handle_ddl_input(request)
+            
+        except Exception as e:
+            return DDLParserResponse(
+                status="error",
+                error=f"Mermaid conversion failed: {str(e)}"
+            )
+    
+    def generate_natural_language_query(self, user_request: str, schema: DatabaseSchema) -> QuerySuggestion:
+        """
+        Generate SQL from natural language request.
+        
+        Args:
+            user_request: Natural language query request
+            schema: Database schema
+            
+        Returns:
+            QuerySuggestion with generated SQL
+        """
+        schema_dict = self._schema_to_dict(schema)
+        query_plan = self.llm_agent.generate_query_from_intent(user_request, schema_dict)
+        
+        return QuerySuggestion(
+            query=query_plan.query,
+            description=query_plan.description,
+            visualization_type=query_plan.visualization_type,
+            expected_columns=query_plan.expected_columns,
+            tables_used=query_plan.tables_used,
+            metadata={
+                "confidence": query_plan.confidence,
+                "explanation": query_plan.explanation,
+                "user_request": user_request
+            }
         )
     
-    def _create_user_instructions(self, schema, suggestions: list[QuerySuggestion]) -> str:
-        """Create clear instructions for the user."""
-        instructions = f"""
+    def _create_user_instructions(self, schema: DatabaseSchema, 
+                                 suggestions: List[QuerySuggestion], 
+                                 analysis: Dict[str, Any]) -> str:
+        """Create intelligent user instructions based on LLM analysis."""
+        
+        # Build header with business context
+        header = f"""
 📊 Schema Analysis Complete!
-
+🤖 Powered by LLM: {self.llm_model}
+"""
+        
+        if analysis.get("business_domain"):
+            header += f"📈 Business Domain: {analysis['business_domain']}\n"
+        if analysis.get("key_entities"):
+            header += f"🔑 Key Entities: {', '.join(analysis['key_entities'])}\n"
+        
+        header += f"""
 Found {len(schema.tables)} table(s) with {len(schema.relationships)} relationship(s).
 
 📝 Next Steps:
-1. Copy one of the SQL queries below
-2. Execute it in your database
-3. Save the results as JSON or CSV
-4. Use the Dashboard Generator with your data
+1. Review the AI-generated SQL queries below
+2. Execute them in your database
+3. Save results as JSON
+4. Generate dashboard with the Dashboard Generator
 
-🔍 Suggested Queries by Visualization Type:
+🔍 AI-Generated Queries ({len(suggestions)} total):
 """
         
         # Group queries by visualization type
@@ -171,22 +263,79 @@ Found {len(schema.tables)} table(s) with {len(schema.relationships)} relationshi
                 by_viz_type[viz_type] = []
             by_viz_type[viz_type].append(suggestion)
         
+        query_section = ""
         for viz_type, queries in by_viz_type.items():
-            instructions += f"\n{viz_type.upper()} Charts ({len(queries)} queries):\n"
-            for i, query in enumerate(queries[:3], 1):  # Show first 3 of each type
-                instructions += f"  {i}. {query.description}\n"
+            query_section += f"\n📊 {viz_type.upper()} Visualizations ({len(queries)} queries):\n"
+            for i, query in enumerate(queries[:3], 1):
+                confidence = ""
+                if query.metadata and query.metadata.get("confidence"):
+                    conf_val = query.metadata["confidence"]
+                    confidence = f" (Confidence: {conf_val:.0%})"
+                query_section += f"  {i}. {query.description}{confidence}\n"
+                if query.metadata and query.metadata.get("explanation"):
+                    query_section += f"     💡 {query.metadata['explanation'][:80]}...\n"
         
-        instructions += """
-💡 Tips:
-- Start with 'table' visualizations to explore your data
-- Use 'bar' charts for categorical distributions
-- Use 'line' charts for time series data
+        # Add business insights
+        insights_section = ""
+        if analysis.get("insights"):
+            insights_section = "\n🎯 Business Insights:\n"
+            for insight in analysis["insights"][:3]:
+                insights_section += f"  • {insight}\n"
+        
+        # Add recommended dashboards
+        dashboard_section = ""
+        if analysis.get("recommended_dashboards"):
+            dashboard_section = "\n📈 Recommended Dashboards:\n"
+            for dashboard in analysis["recommended_dashboards"][:4]:
+                dashboard_section += f"  • {dashboard}\n"
+        
+        footer = """
+💡 Pro Tips:
+- Use natural language to request specific queries
+- The AI understands your business context
+- All queries are optimized for your database type
 - Save query results as JSON for best compatibility
 
-Run queries with your preferred database tool and save the results!
+Ready to create amazing dashboards! 🚀
 """
         
-        return instructions
+        return header + query_section + insights_section + dashboard_section + footer
+    
+    def _schema_to_dict(self, schema: DatabaseSchema) -> Dict[str, Any]:
+        """Convert Schema object to dictionary for LLM processing."""
+        return {
+            "tables": [
+                {
+                    "name": table.name,
+                    "columns": [
+                        {
+                            "name": col.name,
+                            "type": col.data_type,
+                            "nullable": col.is_nullable,
+                            "primary_key": col.is_primary_key,
+                            "foreign_key": col.is_foreign_key,
+                            "unique": getattr(col, 'is_unique', False),
+                            "default": col.default_value
+                        }
+                        for col in table.columns
+                    ],
+                    "primary_keys": table.primary_keys,
+                    "foreign_keys": table.foreign_keys,
+                    "indexes": table.indexes
+                }
+                for table in schema.tables
+            ],
+            "relationships": [
+                {
+                    "from_table": rel.from_table,
+                    "from_column": rel.from_column,
+                    "to_table": rel.to_table,
+                    "to_column": rel.to_column,
+                    "relationship_type": rel.type.value
+                }
+                for rel in schema.relationships
+            ]
+        }
     
     def process_json_request(self, json_str: str) -> str:
         """
@@ -199,14 +348,9 @@ Run queries with your preferred database tool and save the results!
             JSON string containing response
         """
         try:
-            # Parse request
             request_data = json.loads(json_str)
             request = DDLParserRequest(**request_data)
-            
-            # Handle request
             response = self.handle_request(request)
-            
-            # Return JSON response
             return response.model_dump_json(indent=2)
             
         except json.JSONDecodeError as e:
@@ -223,36 +367,46 @@ Run queries with your preferred database tool and save the results!
             return error_response.model_dump_json(indent=2)
 
 
-# Example usage
+# Quick test
 if __name__ == "__main__":
-    server = DDLParserMCPServer()
-    
-    # Example DDL input
-    example_ddl = """
-    CREATE TABLE users (
-        id INTEGER PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(255) UNIQUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    
-    CREATE TABLE posts (
-        id INTEGER PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        title VARCHAR(200),
-        content TEXT,
-        published_at TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-    """
-    
-    request = DDLParserRequest(
-        task="parse_schema",
-        input=example_ddl,
-        format=InputFormat.DDL,
-        database_type="sqlite",
-        visualization_intents=["overview", "distributions", "relationships"]
-    )
-    
-    response = server.handle_request(request)
-    print(json.dumps(response.model_dump(), indent=2))
+    try:
+        server = DDLParserMCPServer()
+        print("✅ Server initialized successfully!")
+        
+        # Test with sample DDL
+        test_ddl = """
+        CREATE TABLE users (
+            id INTEGER PRIMARY KEY,
+            username VARCHAR(50) NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE posts (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            title VARCHAR(200),
+            content TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+        """
+        
+        request = DDLParserRequest(
+            task="parse_schema",
+            input=test_ddl,
+            format=InputFormat.DDL,
+            database_type="sqlite",
+            visualization_intents=["overview", "distribution"]
+        )
+        
+        response = server.handle_request(request)
+        
+        if response.status == "success":
+            print(f"📊 Tables: {response.metadata.get('table_count', 0)}")
+            print(f"🤖 Business Domain: {response.metadata.get('business_analysis', {}).get('business_domain', 'Unknown')}")
+            print(f"📝 Generated {len(response.suggested_queries)} queries")
+        else:
+            print(f"❌ Error: {response.error}")
+            
+    except RuntimeError as e:
+        print(f"❌ {e}")
