@@ -61,6 +61,8 @@ class QuerySuggestion(BaseModel):
     description: str
     visualization_type: str  # bar, line, pie, scatter, heatmap, table
     expected_columns: List[str]
+    result_key: Optional[str] = None  # Key name for combined JSON output
+    aggregation_type: Optional[str] = None  # sum, avg, count, etc.
     parameters: Optional[List[str]] = None  # For parameterized queries
     tables_used: Optional[List[str]] = None  # Tables referenced in query
     metadata: Optional[Dict[str, Any]] = None  # Additional metadata (e.g., LLM confidence)

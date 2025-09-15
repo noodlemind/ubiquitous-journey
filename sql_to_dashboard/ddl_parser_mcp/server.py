@@ -2,6 +2,7 @@
 
 import json
 from typing import Dict, Any, List, Optional
+import json
 import sys
 from pathlib import Path
 import requests
@@ -129,12 +130,17 @@ class DDLParserMCPServer:
         
         # Convert QueryPlans to QuerySuggestions
         suggestions = []
-        for plan in query_plans:
+        for i, plan in enumerate(query_plans):
+            # Generate unique result key
+            result_key = self._generate_result_key(plan.description, i)
+            
             suggestions.append(QuerySuggestion(
                 query=plan.query,
                 description=plan.description,
                 visualization_type=plan.visualization_type,
                 expected_columns=plan.expected_columns,
+                result_key=result_key,
+                aggregation_type=self._detect_aggregation_type(plan.query),
                 tables_used=plan.tables_used,
                 metadata={
                     "confidence": plan.confidence,
@@ -247,10 +253,10 @@ Return only the CREATE TABLE statements in standard SQL format."""
 Found {len(schema.tables)} table(s) with {len(schema.relationships)} relationship(s).
 
 📝 Next Steps:
-1. Review the AI-generated SQL queries below
-2. Execute them in your database
-3. Save results as JSON
-4. Generate dashboard with the Dashboard Generator
+1. Execute the master query in your database
+2. Save the complete result set as data.json
+3. Use Dashboard Generator with data.json
+4. D3.js will handle all visualizations dynamically
 
 🔍 AI-Generated Queries ({len(suggestions)} total):
 """
@@ -365,6 +371,53 @@ Ready to create amazing dashboards! 🚀
                 error=f"Request processing failed: {str(e)}"
             )
             return error_response.model_dump_json(indent=2)
+    
+    def _generate_result_key(self, description: str, index: int) -> str:
+        """
+        Generate a unique result key for a query.
+        
+        Args:
+            description: Query description
+            index: Query index
+            
+        Returns:
+            Unique result key
+        """
+        import re
+        # Create a safe key from description
+        key = re.sub(r'[^a-zA-Z0-9_]', '_', description.lower())
+        key = re.sub(r'_+', '_', key)  # Remove multiple underscores
+        key = key.strip('_')[:50]  # Limit length
+        
+        # Make unique with index
+        return f"{key}_{index + 1}"
+    
+    def _detect_aggregation_type(self, query: str) -> Optional[str]:
+        """
+        Detect the type of aggregation used in a query.
+        
+        Args:
+            query: SQL query
+            
+        Returns:
+            Aggregation type (sum, count, avg, etc.) or None
+        """
+        query_upper = query.upper()
+        
+        aggregations = {
+            'COUNT(': 'count',
+            'SUM(': 'sum',
+            'AVG(': 'avg',
+            'MIN(': 'min',
+            'MAX(': 'max',
+            'GROUP BY': 'group'
+        }
+        
+        for pattern, agg_type in aggregations.items():
+            if pattern in query_upper:
+                return agg_type
+        
+        return None
 
 
 # Quick test

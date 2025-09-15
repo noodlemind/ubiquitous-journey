@@ -19,6 +19,8 @@ class QueryPlan:
     explanation: str
     tables_used: List[str]
     expected_columns: List[str]
+    result_key: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class SQLIntelligenceAgent:
@@ -125,43 +127,25 @@ class SQLIntelligenceAgent:
                                   schema: Dict[str, Any],
                                   visualization_intents: Optional[List[str]] = None) -> List[QueryPlan]:
         """
-        Generate intelligent query suggestions based on schema.
+        Generate a single comprehensive query for D3.js dashboard.
         
         Args:
             schema: Database schema
             visualization_intents: Types of visualizations desired
             
         Returns:
-            List of suggested query plans
+            List with master query plan (and optionally focused queries)
         """
-        print("💡 [Agent] Generating intelligent query suggestions...")
+        print("💡 [Agent] Generating comprehensive master query for D3.js visualizations...")
         
         # First analyze the schema
         analysis = self.analyze_business_context(schema)
         
-        suggestions = []
+        # Generate the master query that joins all relevant tables
+        master_query = self._generate_master_query(schema, analysis, visualization_intents)
         
-        # Get LLM suggested queries
-        llm_suggestions = analysis.get("suggested_queries", [])
-        
-        # Convert each suggestion to a query
-        for suggestion in llm_suggestions[:5]:  # Limit to 5
-            query_plan = self.generate_query_from_intent(suggestion, schema)
-            suggestions.append(query_plan)
-        
-        # Add specific queries based on visualization intents
-        if visualization_intents:
-            for intent in visualization_intents:
-                if intent == "overview":
-                    suggestions.extend(self._generate_overview_queries(schema, analysis))
-                elif intent == "distribution":
-                    suggestions.extend(self._generate_distribution_queries(schema, analysis))
-                elif intent == "time_series":
-                    suggestions.extend(self._generate_time_series_queries(schema, analysis))
-                elif intent == "relationships":
-                    suggestions.extend(self._generate_relationship_queries(schema, analysis))
-        
-        return suggestions[:10]  # Return top 10 suggestions
+        # Return the master query (D3 will handle all transformations)
+        return [master_query]
     
     def optimize_query(self, query: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -358,6 +342,69 @@ Provide 2-3 key insights in plain language that a business user would find valua
             return next((t for t in tables if t["name"] == main_table_name), None)
         
         return tables[0] if tables else None
+    
+    def _generate_master_query(self, schema: Dict, analysis: Dict, 
+                              visualization_intents: Optional[List[str]] = None) -> QueryPlan:
+        """
+        Generate a single comprehensive query that returns all data needed for D3 visualizations.
+        D3 will handle grouping, filtering, and aggregations on the client side.
+        """
+        print("🎯 [Agent] Creating comprehensive master query for D3.js...")
+        
+        # Build the master query intent
+        tables = schema.get("tables", [])
+        relationships = schema.get("relationships", [])
+        
+        if not tables:
+            return self._create_fallback_query("No tables found", schema)
+        
+        # Construct the intent for a comprehensive data query
+        intent = f"""
+        Generate a single comprehensive SQL query that:
+        1. JOINs all related tables based on foreign key relationships
+        2. Returns ALL columns from ALL tables (using table aliases to avoid conflicts)
+        3. Includes all date/time columns for time-series analysis
+        4. Includes all categorical columns for grouping/filtering
+        5. Includes all numeric columns for aggregations
+        6. Does NOT perform any aggregations (D3.js will handle that)
+        7. Returns raw, denormalized data that D3 can transform as needed
+        8. Limits results to a reasonable amount (e.g., 10000 rows) for performance
+        
+        The dashboard will use D3.js to:
+        - Group data dynamically
+        - Calculate aggregations on the fly
+        - Filter based on user interactions
+        - Create multiple visualizations from this single dataset
+        
+        Schema has {len(tables)} tables with {len(relationships)} relationships.
+        Business domain: {analysis.get('business_domain', 'general')}
+        Key entities: {', '.join(analysis.get('key_entities', []))}
+        """
+        
+        # Add specific requirements based on visualization intents
+        if visualization_intents:
+            intent += f"\nVisualization requirements: {', '.join(visualization_intents)}"
+        
+        # Generate the master query using LLM
+        query_plan = self.generate_query_from_intent(intent, schema)
+        
+        # Update metadata for master query
+        query_plan.description = "Comprehensive dataset for D3.js dashboard (all tables joined)"
+        query_plan.visualization_type = "d3-multi"  # Special type for D3 multi-visualization
+        query_plan.metadata = {
+            "type": "master_query",
+            "purpose": "D3.js dashboard data source",
+            "processing": "client-side",
+            "tables_included": len(tables),
+            "relationships_used": len(relationships),
+            "visualization_intents": visualization_intents or ["overview", "distribution", "time_series"],
+            "note": "D3.js will handle all aggregations and transformations"
+        }
+        
+        # Ensure we have a result key for the data
+        query_plan.result_key = "master_dataset"
+        
+        return query_plan
     
     def _get_dashboard_recommendations(self, domain: str, entities: List[str]) -> List[str]:
         """Get dashboard recommendations based on business domain."""
